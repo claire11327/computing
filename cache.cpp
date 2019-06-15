@@ -1,8 +1,10 @@
 #include <typeinfo>
 #include <iostream>
 #include <fstream>
-#include <cstring>  
+#include <cstring>
+#include <cstdlib>  
 #include <cstdio>
+#include <ctime>
 #include <cmath>
 #include <map>
 
@@ -21,7 +23,7 @@ class block{
 }; 
 class set{
     public:
-        map<long,block> S ; //long > tag in this set
+        map<unsigned int,block> S ; //unsigned int > tag in this set
         int blockNum = 0;
     
 };
@@ -44,20 +46,18 @@ int main(int argc, char *argv[]){
     int blockNumber;
     int indexNumber;
     int tagNumber;
-    int byteoffset;
-    int wordoffset;
     int offset;
     int N;
-    long temp;
-    long out;
+    int out;
     bool LRU;
+    
+    unsigned int temp; // command
 
 
-    int lastv = 0;
 
-    map<int, set> cache; //long > index
-    map<int, set>::iterator iter;
-    map<long, block>::iterator iter_2;
+    map<unsigned int , set> cache; //long > index
+    map<unsigned int , set>::iterator iter;
+    map<unsigned int, block>::iterator iter_2;
 
     fileIn >> cacheSize;
     fileIn >> blockSize;
@@ -75,6 +75,7 @@ int main(int argc, char *argv[]){
             break;
         case 2:
             N = blockNumber;
+            srand(time(NULL));
             break;
         default:
             N = 0;
@@ -84,34 +85,33 @@ int main(int argc, char *argv[]){
     offset = log2(blockSize);
     tagNumber   = 32 - offset - indexNumber;
 
-
     //set index
     for(int i = 0; i < pow(2,indexNumber); i++){
         set s;
         s.blockNum = 0;
         cache[i] = s;
     }
-
-    
-
-
-    cout << "--------------------------\n" ; 
     int k = 0;
-    int j = 0;
 
     while(fileIn >> hex >> temp){
-        lastv = out;
 
-        long tag; 
+        
         int temp2 = pow(2,32 - tagNumber);
-        int index = (temp % temp2)/pow(2,offset);
-        tag = temp / temp2;
+        unsigned int  index = (temp % temp2)/pow(2,offset);
+        unsigned int  tag = temp / temp2;
 
         iter = cache.find(index);
         if(iter == cache.end()){
             fileOut << "out of index" << endl;
         }
         iter_2 = cache[index].S.find(tag);
+
+        if(k == 10 && replacePolicy == 2){
+            for(iter_2 = cache[index].S.begin();iter_2 != cache[index].S.end(); iter_2 ++){
+                iter_2->second.refer = false;
+            }
+        }
+
 
 
         if(iter_2 != cache[index].S.end()){
@@ -120,10 +120,12 @@ int main(int argc, char *argv[]){
             out = -1;
         }
         else{
+            //didn't find tag in set
+            //do replacement
             iter_2 = cache[index].S.begin();
-            int erasetag = iter_2->first;
-            int eraseacc = iter_2->second.access;
-            if(cache[index].blockNum == pow(2,byteoffset)){
+            unsigned int  erasetag = iter_2->first;
+            unsigned int  eraseacc = iter_2->second.access;
+            if(cache[index].blockNum == N){
                 //no space in set, need to replace
                 if(replacePolicy == 0){
                     //FIFO
@@ -135,7 +137,7 @@ int main(int argc, char *argv[]){
                         }
                     }
                 }
-                else if(replacePolicy == 1 || replacePolicy == 2){
+                else if(replacePolicy == 1 ){
                     //LRU
                     bool LRU = false;
                     for(iter_2 = cache[index].S.begin();iter_2 != cache[index].S.end(); iter_2 ++){
@@ -152,17 +154,29 @@ int main(int argc, char *argv[]){
                         }
                     }
                 }
+                else if(replacePolicy == 2){
+                    //random
+                    int i = 0;
+                    int j = rand() % 4;
+                    for(iter_2 = cache[index].S.begin();iter_2 != cache[index].S.end(); iter_2 ++){
+                        if(i == j){
+                            erasetag = iter_2->first;
+                            eraseacc = iter_2->second.access;
+                            break;
+                        }
+                        i ++ ;
+                    }
+                }
+
                 cache[index].S.erase(erasetag);
                 cache[index].blockNum --;
             }
             else{
                 //still has space in set
                 erasetag = -1;
-                eraseacc = pow(2, byteoffset);
+                eraseacc = pow(2, N);
             }
 
-            // set *p (pointer point to set )
-            // erase p from cache[index].S
             // set new block for new set 
             block b;
             b.valid =  true;
@@ -180,6 +194,9 @@ int main(int argc, char *argv[]){
         }
         
         fileOut << out << endl;
-            
+        if(out != -1 ){
+            cout << out << endl;
+        }
+        k++;
     }
 }
