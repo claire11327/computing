@@ -157,7 +157,7 @@ int main(int argc, char *argv[]){
                 else if(replacePolicy == 2){
                     //random
                     int i = 0;
-                    int j = rand() % 4;
+                    int j = rand() % N;
                     for(iter_2 = cache[index].S.begin();iter_2 != cache[index].S.end(); iter_2 ++){
                         if(i == j){
                             erasetag = iter_2->first;
@@ -194,9 +194,5 @@ int main(int argc, char *argv[]){
         }
         
         fileOut << out << endl;
-        if(out != -1 ){
-            cout << out << endl;
-        }
-        k++;
     }
 }
